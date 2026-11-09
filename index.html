@@ -70,27 +70,12 @@ label{font-size:.85rem;color:var(--mut)}
 <label style="display:block;margin-top:10px">🔑 AssemblyAI API key</label>
 <input id="aai" type="password" placeholder="AssemblyAI key"></div>
 
-<div class="card" id="vwc" style="display:none">
-<h2>🎞 Video ကြည့်ရန် / ✂ ဖြတ်ယူမည်</h2>
-<video id="vplay" controls playsinline preload="auto" style="margin-top:0;background:#000;max-height:60vh"></video>
-<div id="vlen" class="wn" style="margin:6px 0">စုစုပေါင်း -</div>
-<label>စချိန် (ဥပမာ 1:30)</label>
-<div class="row"><input id="t0" value="0:00" inputmode="numeric"><button class="sec" id="s0">📍 ယခုနေရာ</button></div>
-<input type="range" id="r0" min="0" max="1" step="1" value="0">
-<label>ဆုံးချိန်</label>
-<div class="row"><input id="t1" value="0:00" inputmode="numeric"><button class="sec" id="s1">📍 ယခုနေရာ</button></div>
-<input type="range" id="r1" min="0" max="1" step="1" value="1">
-<div id="tinfo" class="ok" style="font-weight:600">ယူမည့်ကြာချိန်: -</div>
-<button class="sec" id="tpv">▶ ဖြတ်မည့်အပိုင်း ကြည့်</button>
-<div class="row" style="margin-top:8px"><button id="tgo">✂ ဖြတ်မည်</button><button class="sec" id="tundo">↩ မူရင်းပြန်ထား</button></div>
-<div id="tpw" style="display:none"><div class="pb"><i id="tpb"></i></div><div id="tpt" class="wn" style="margin-top:4px"></div></div>
-</div>
-
 <div class="card" id="vc" style="display:none">
-<label>အောက်က preview က အပေါ်က video ကို ရပ်ထားတဲ့ ပုံ ဖြစ်ပါတယ် (စာတန်းပါတဲ့နေရာမှာ ရပ်ပြီး ချိန်ပါ)</label>
 <div id="stage"><canvas id="pc"></canvas>
  <div id="bbox"><div class="hd" id="bh" style="background:#ff5252"></div></div>
- <div id="ssample">စာတန်းနမူနာ</div><div id="wms">Watermark</div></div></div>
+ <div id="ssample">စာတန်းနမူနာ</div><div id="wms">Watermark</div></div>
+<input type="range" id="seek" min="0" max="1000" value="0">
+<video id="sv" muted playsinline preload="auto" style="display:none"></video></div>
 
 <div class="card" id="tc" style="display:none">
 <div class="tabs" id="tabs"><button class="on" data-t="0">ဗီဒီယို</button><button data-t="1">Blur</button><button data-t="2">စာတန်း</button><button data-t="3">အသံ</button></div>
@@ -161,22 +146,23 @@ label{font-size:.85rem;color:var(--mut)}
 <button id="ct">ဆက်သွား ▶</button></div>
 
 <div class="card" id="oc" style="display:none"><h2>ရလဒ်</h2>
-<video id="ov" controls></video><a class="btn" id="dl">⬇ MP4 ဒေါင်းလုဒ်</a></div>
+<video id="ov" controls playsinline></video><button id="dl">⬇ MP4 ဒေါင်းလုဒ်</button></div>
 </main>
 <canvas id="cv" style="display:none"></canvas>
 <script>
 const API="http://127.0.0.1:5000",$=i=>document.getElementById(i),L=localStorage,clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),sleep=ms=>new Promise(r=>setTimeout(r,ms));
-let online=false,JID=null,SRCID=null,mode="recap",size="9:16",Q=720,SUB={by:0,bh:2},WMB={by:0,bh:2},DUR=0,until=0,lastDraw=0;
+let online=false,JID=null,SRCID=null,mode="recap",size="9:16",Q=720,SUB={by:0,bh:2},WMB={by:0,bh:2};
 const B={x:.08,y:.78,w:.84,h:.14},SB={x:.5,y:.86},WM={x:.82,y:.07},CR={x:.1,y:.1,w:.8,h:.8};
 const FONTS=[["Noto Sans – Bold","'Noto Sans Myanmar'",700],["Noto Sans – Regular","'Noto Sans Myanmar'",400],["Noto Serif – Bold","'Noto Serif Myanmar'",700],["Padauk – Bold","'Padauk'",700],["Padauk – Regular","'Padauk'",400]];
 FONTS.forEach((f,i)=>{const o=document.createElement("option");o.value=i;o.textContent=f[0];$("fsel").appendChild(o)});
 const post=(u,b)=>fetch(API+u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
 if(L.rc_aai)$("aai").value=L.rc_aai;$("aai").onchange=()=>L.rc_aai=$("aai").value.trim();
 
+/* ---------- Termux ချိတ်ဆက်မှု ---------- */
 async function ping(){
   try{const c=new AbortController();setTimeout(()=>c.abort(),2500);await fetch(API+"/",{signal:c.signal});online=true;
     $("conn").className="ok";$("conn").textContent="✅ Termux နဲ့ ချိတ်ဆက်ပြီးပါပြီ"}
-  catch(e){online=false;$("conn").className="er";$("conn").textContent="❌ ချိတ်မရသေးပါ – Termux မှာ python server.py run ထားပါ"}}
+  catch(e){online=false;$("conn").className="er";$("conn").textContent="❌ ချိတ်မရသေးပါ – Termux မှာ python server.py run ထားပါ (Chrome မှာ permission မေးရင် Allow)"}}
 ping();setInterval(ping,3000);
 
 $("tabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;
@@ -204,7 +190,7 @@ function applyUI(){
   $("bsv").textContent=$("bs").value;$("bgv").textContent=$("bgb").value;$("fsv").textContent=$("fsz").value;$("wsv").textContent=$("wsz").value;
   $("pv").textContent=$("pitch").value;$("rv").textContent=$("rate").value}
 function redraw(){
-  const v=$("vplay");if(!v.videoWidth)return;
+  const v=$("sv");if(!v.videoWidth)return;
   const {W,H}=WH(),k=720/Math.max(W,H),cw=Math.round(W*k),ch=Math.round(H*k),c=$("pc");
   if(c.width!=cw||c.height!=ch){c.width=cw;c.height=ch}
   const g=c.getContext("2d"),vw=v.videoWidth,vh=v.videoHeight,C=$("cropon").checked?CR:{x:0,y:0,w:1,h:1};
@@ -233,77 +219,27 @@ drag($("ch"),"rstage",()=>({...CR}),(s,dx,dy)=>{CR.w=clamp(s.w+dx,.1,1-CR.x);CR.
 ["#ffffff","#ffe600","#00e5ff","#76ff03","#ff5252","#ff9100"].forEach(c=>{
   const b=document.createElement("button");b.style.background=c;b.onclick=()=>{$("scol").value=c;applyUI()};$("sw").appendChild(b)});
 window.addEventListener("resize",applyUI);
-
-/* ---------- Video player + ဖြတ်ယူမည် ---------- */
-const V=$("vplay");
-const ft=s=>{s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),c=s%60;return(h?h+":"+String(m).padStart(2,"0"):m)+":"+String(c).padStart(2,"0")};
-const parseT=v=>{const a=String(v).trim().split(":").map(Number);if(!a.length||a.some(isNaN))return NaN;return a.reduce((x,y)=>x*60+y,0)};
-function tinfo(){const s=+$("r0").value,e=+$("r1").value;
-  $("tinfo").textContent="ယူမည့်ကြာချိန်: "+ft(e-s)+"  ("+ft(s)+" → "+ft(e)+")"}
-function setR(which,val){
-  let s=+$("r0").value,e=+$("r1").value;val=Math.round(clamp(val,0,Math.floor(DUR)));
-  if(which==0){s=Math.min(val,e-1);$("r0").value=s;$("t0").value=ft(s)}
-  else{e=Math.max(val,s+1);$("r1").value=e;$("t1").value=ft(e)}
-  tinfo()}
-V.addEventListener("loadedmetadata",()=>{
-  DUR=V.duration||0;const m=Math.max(1,Math.floor(DUR));
-  $("r0").max=$("r1").max=m;$("r0").value=0;$("r1").value=m;$("t0").value="0:00";$("t1").value=ft(m);
-  $("vlen").textContent="စုစုပေါင်း "+ft(DUR);tinfo();
-  $("vwc").style.display="block";$("vc").style.display="block";$("tc").style.display="block";
-  layout();V.currentTime=Math.min(1,DUR/3)});
-V.addEventListener("timeupdate",()=>{
-  if(until&&V.currentTime>=until){V.pause();until=0}
-  const n=Date.now();if(n-lastDraw>400){lastDraw=n;redraw()}});
-["seeked","pause","loadeddata"].forEach(e=>V.addEventListener(e,redraw));
-$("r0").oninput=()=>setR(0,+$("r0").value);$("r1").oninput=()=>setR(1,+$("r1").value);
-$("t0").onchange=()=>{const v=parseT($("t0").value);setR(0,isNaN(v)?0:v)};
-$("t1").onchange=()=>{const v=parseT($("t1").value);setR(1,isNaN(v)?DUR:v)};
-$("s0").onclick=()=>setR(0,V.currentTime);$("s1").onclick=()=>setR(1,V.currentTime);
-$("tpv").onclick=()=>{V.currentTime=+$("r0").value;until=+$("r1").value;V.play()};
-function loadSrc(u){V.src=u}
-async function ensureId(){
-  if(SRCID)return SRCID;
-  const f=$("vf").files[0];if(!f)throw new Error("Video မရွေးရသေးပါ");
-  SRCID=await upload(f);return SRCID}
-function setTP(p,msg,cls){$("tpw").style.display="block";$("tpb").style.width=p+"%";$("tpt").className=cls||"wn";$("tpt").textContent=msg}
-$("tgo").onclick=async()=>{
-  if(!online){alert("Termux နဲ့ မချိတ်ရသေးပါ");return}
-  const s=+$("r0").value,e=+$("r1").value;
-  if(e-s<1){alert("ဆုံးချိန်က စချိန်ထက် ကြီးရပါမယ်");return}
-  if(s<=0&&e>=Math.floor(DUR)){alert("Video တစ်ခုလုံး ယူမည်ဆိုတော့ ဖြတ်စရာ မလိုပါ");return}
-  $("tgo").disabled=true;$("tundo").disabled=true;setTP(0,"ပြင်ဆင်နေသည်...");
-  try{
-    const id=await ensureId();await post("/api/trim",{id,start:s,end:e});
-    while(true){const j=await (await fetch(API+"/api/trim/"+id)).json();
-      if(j.s=="err"){setTP(0,"❌ "+j.m,"er");break}
-      if(j.s=="ok"){setTP(100,"✅ ဖြတ်ပြီးပါပြီ","ok");loadSrc(API+"/api/src/"+id+"?t="+Date.now());break}
-      setTP(j.p,"ဖြတ်နေသည် "+j.p+"%");await sleep(700)}
-  }catch(e){setTP(0,"❌ "+e.message,"er")}
-  $("tgo").disabled=false;$("tundo").disabled=false};
-$("tundo").onclick=async()=>{
-  if(!SRCID){alert("မဖြတ်ရသေးပါ");return}
-  $("tundo").disabled=true;
-  try{await post("/api/untrim",{id:SRCID});loadSrc(API+"/api/src/"+SRCID+"?t="+Date.now());setTP(0,"↩ မူရင်း video ပြန်ထားပြီး","ok")}
-  catch(e){setTP(0,"❌ "+e.message,"er")}
-  $("tundo").disabled=false};
+$("sv").addEventListener("loadedmetadata",()=>{$("vc").style.display="block";$("tc").style.display="block";layout();$("sv").currentTime=Math.min(1,$("sv").duration/3)});
+$("sv").addEventListener("seeked",redraw);$("sv").addEventListener("loadeddata",redraw);
+$("seek").oninput=()=>{const v=$("sv");if(v.duration)v.currentTime=v.duration*$("seek").value/1000};
+function loadSrc(u){$("sv").src=u}
 
 /* ---------- Video ရွေး / Link ဒေါင်း ---------- */
-$("vf").onchange=()=>{const f=$("vf").files[0];if(!f)return;SRCID=null;$("tpw").style.display="none";loadSrc(URL.createObjectURL(f))};
+$("vf").onchange=()=>{const f=$("vf").files[0];if(!f)return;SRCID=null;loadSrc(URL.createObjectURL(f))};
 $("pst").onclick=async()=>{try{$("url").value=await navigator.clipboard.readText()}catch(e){alert("Paste မရပါ – link ကို ကိုယ်တိုင် ထည့်ပါ")}};
 function setP(p,msg){$("dp").style.display="block";$("pbar").style.width=p+"%";
-  $("ptx").className=msg&&msg[0]=="❌"?"er":(p>=100?"ok":"wn");$("ptx").textContent=msg||(p>=100?"✅ ဒေါင်းပြီးပါပြီ – အပေါ်မှာ ကြည့်လို့ရပါပြီ":"ဒေါင်းနေသည် "+p+"%")}
+  $("ptx").className=msg&&msg[0]=="❌"?"er":(p>=100?"ok":"wn");$("ptx").textContent=msg||(p>=100?"✅ ဒေါင်းပြီးပါပြီ":"ဒေါင်းနေသည် "+p+"%")}
 $("dlb").onclick=async()=>{
   const u=$("url").value.trim();if(!u)return;if(!online){alert("Termux နဲ့ မချိတ်ရသေးပါ");return}
   $("dlb").disabled=true;setP(0);
   try{const {id}=await (await post("/api/dl",{url:u})).json();
     while(true){const j=await (await fetch(API+"/api/dl/"+id)).json();
       setP(j.p,j.s=="err"?"❌ "+j.m:null);
-      if(j.s=="ok"){SRCID=id;$("vf").value="";$("tpw").style.display="none";loadSrc(API+"/api/src/"+id);$("vwc").scrollIntoView();break}
+      if(j.s=="ok"){SRCID=id;$("vf").value="";loadSrc(API+"/api/src/"+id);break}
       if(j.s=="err")break;await sleep(700)}
   }catch(e){setP(0,"❌ "+e.message)}
   $("dlb").disabled=false};
 
-/* ---------- အသံ စမ်း ---------- */
 $("prev").onclick=async()=>{
   $("pm").textContent="";$("prev").disabled=true;
   try{const r=await post("/api/preview",{text:$("stext").value,voice:$("voice").value,pitch:$("pitch").value,rate:$("rate").value});
@@ -312,7 +248,7 @@ $("prev").onclick=async()=>{
   }catch(e){$("pm").textContent="❌ "+e.message}
   $("prev").disabled=false};
 
-/* ---------- စာတန်း / Watermark ---------- */
+/* ---------- စာတန်း / Watermark (အကွက်ပိုင်းလေးပဲ ဆွဲ) ---------- */
 function chunks(text,n){const out=[];
   text.split(/(?<=[၊။,.!?])/).forEach(part=>{
     const t=part.replace(/(?<!\u1039)([\u1000-\u1021\u1025-\u1029\u103F\u1040-\u1049\u104C-\u104F])(?![\u103A\u1039])/g,"|$1").split("|").filter(Boolean);
@@ -330,6 +266,7 @@ async function makeSubs(){
   const fs=$("fsz").value/100*H;SUB=band(SB.y*H,fs,H);
   $("tr").value.split("\n").forEach(l=>{const m=l.match(/^[^\d]*?(\d+)\s*[|｜]\s*[\d:.]+\s*[|｜]\s*(.*\S)\s*$/);if(m&&!map[m[1]])map[m[1]]=m[2].trim()});
   const ks=Object.keys(map).map(Number).sort((a,b)=>a-b);await loadFont();
+  await post("/api/reset_subs",{id:JID});
   for(let i=0;i<ks.length;i++){
     draw([{s:"run",n:"စာတန်းပုံ ဆွဲနေသည်",m:(i+1)+"/"+ks.length}]);
     const parts=chunks(map[ks[i]],n).map(t=>({w:t.length,png:renderPNG(t,W,SUB.bh,SB.x*W,SB.y*H-SUB.by,fs,$("scol").value,1)}));
@@ -380,15 +317,15 @@ async function poll(){
       await sleep(2000);continue}
     draw(j.steps);
     if(j.status=="wait"){if($("tx").style.display=="none"){$("src").value=j.text;$("tx").style.display="block";$("tx").scrollIntoView()}return}
-    if(j.status=="done"){$("ov").src=API+"/api/video/"+JID;$("dl").href=API+"/api/video/"+JID+"?dl=1";$("oc").style.display="block";$("oc").scrollIntoView();return}
+    if(j.status=="done"){$("ov").src=API+"/api/video/"+JID;$("oc").style.display="block";$("oc").scrollIntoView();return}
     if(j.status=="error"){alert("❌ "+j.error);return}
     await sleep(1000)}}
 $("go").onclick=async()=>{
+  const f=$("vf").files[0];
   if(!online){alert("Termux နဲ့ မချိတ်ရသေးပါ");return}
-  if(!$("aai").value.trim()){alert("AssemblyAI key ထည့်ပါ");return}
-  if(!SRCID&&!$("vf").files[0]){alert("Video (ဖိုင်/link) ရွေးပါ");return}
+  if((!f&&!SRCID)||!$("aai").value.trim()){alert("Video (ဖိုင်/link) နဲ့ AssemblyAI key ထည့်ပါ");return}
   $("go").disabled=true;$("oc").style.display="none";$("tx").style.display="none";$("tr").value="";$("chk").innerHTML="";
-  try{JID=await ensureId();
+  try{JID=f?await upload(f):SRCID;
     await post("/api/transcribe",{id:JID,aai:$("aai").value.trim(),mode});await poll()}
   catch(e){draw([{s:"err",n:"Error",m:e.message}])}
   $("go").disabled=false};
@@ -416,5 +353,15 @@ $("ct").onclick=async()=>{
     if(!r.ok)show(j);else{$("chk").innerHTML="";$("tx").style.display="none";await poll()}
   }catch(e){draw([{s:"err",n:"Error",m:e.message}])}
   $("ct").disabled=false};
+
+/* ---------- MP4 ဒေါင်းလုဒ် (https စာမျက်နှာကနေ http link တိုက်ရိုက်ဒေါင်းရင် ပိတ်တတ်လို့ blob နဲ့ သိမ်း) ---------- */
+$("dl").onclick=async()=>{
+  const b=$("dl");b.disabled=true;b.textContent="ဒေါင်းနေသည်...";
+  try{const r=await fetch(API+"/api/video/"+JID);if(!r.ok)throw new Error("HTTP "+r.status);
+    const u=URL.createObjectURL(await r.blob()),a=document.createElement("a");
+    a.href=u;a.download="recap.mp4";document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),60000);
+  }catch(e){alert("❌ "+e.message);window.open(API+"/api/video/"+JID+"?dl=1","_blank")}
+  b.disabled=false;b.textContent="⬇ MP4 ဒေါင်းလုဒ်"};
 applyUI();
 </script></body></html>
